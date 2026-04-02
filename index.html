@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>万向节附加弯矩与载荷分析工具</title>
+<style>
+:root {
+  --bg:     #0d1117;
+  --bg2:    #161b22;
+  --bg3:    #1c2330;
+  --bd:     rgba(255,255,255,0.08);
+  --bd2:    rgba(255,255,255,0.15);
+  --t1:     #e6edf3;
+  --t2:     #8b949e;
+  --t3:     #6e7681;
+  --blue:   #58a6ff;
+  --blue2:  #1f6feb;
+  --green:  #3fb950;
+  --amber:  #d29922;
+  --red:    #f85149;
+  --teal:   #39c5cf;
+  --purple: #bc8cff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;font-size:16px;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+
+/* ── header ── */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--bd);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.hdr-ico{width:38px;height:38px;background:linear-gradient(135deg,#39c5cf,#1f6feb);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdr-ico svg{width:20px;height:20px}
+.hdr-title{font-size:18px;font-weight:700;color:var(--t1)}
+.hdr-sub{font-size:13px;color:var(--t2);margin-top:2px}
+.badge{font-size:13px;color:var(--teal);background:rgba(57,197,207,.1);border:1px solid rgba(57,197,207,.25);border-radius:6px;padding:4px 10px;white-space:nowrap;font-family:monospace}
+
+/* ── layout ── */
+.wrap{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ── sidebar ── */
+.side{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);padding:16px 14px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+.stl{font-size:13px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+
+/* param box */
+.pbox{background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:12px 12px 10px}
+.plbl{font-size:13px;color:var(--t2);margin-bottom:4px}
+.pval{font-family:monospace;font-size:36px;font-weight:500;color:var(--blue);text-align:center;line-height:1}
+.punit{font-size:18px;color:var(--t2);margin-left:3px}
+
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--bd2);outline:none;cursor:pointer;margin-top:8px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px rgba(88,166,255,.22);cursor:pointer}
+.ticks{display:flex;justify-content:space-between;margin-top:5px;font-family:monospace;font-size:11px;color:var(--t3)}
+
+/* preset */
+.pg{display:grid;gap:5px;margin-top:8px}
+.pg3{grid-template-columns:repeat(3,1fr)}
+.pg4{grid-template-columns:repeat(4,1fr)}
+.pbtn{background:var(--bg3);border:1px solid var(--bd);border-radius:6px;padding:7px 3px;color:var(--t2);font-family:monospace;font-size:14px;cursor:pointer;text-align:center;transition:.13s;touch-action:manipulation}
+.pbtn:hover{border-color:var(--bd2);color:var(--t1);background:#2d333b}
+.pbtn.on{border-color:var(--blue2);color:var(--blue);background:rgba(31,111,235,.15)}
+
+/* result cards */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rc{background:var(--bg3);border:1px solid var(--bd);border-radius:9px;padding:11px 13px}
+.rc.full{grid-column:1/-1}
+.rc.accent-green{border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.05)}
+.rc.accent-teal{border-color:rgba(57,197,207,.35);background:rgba(57,197,207,.05)}
+.rc.accent-amber{border-color:rgba(210,153,34,.35);background:rgba(210,153,34,.05)}
+.rc.accent-purple{border-color:rgba(188,140,255,.35);background:rgba(188,140,255,.05)}
+.rc-n{font-size:12px;color:var(--t3);margin-bottom:5px;line-height:1.4}
+.rc-v{font-family:monospace;font-size:22px;font-weight:600}
+.rc-v.green{color:var(--green)}
+.rc-v.teal{color:var(--teal)}
+.rc-v.amber{color:var(--amber)}
+.rc-v.purple{color:var(--purple)}
+.rc-u{font-size:13px;color:var(--t2);margin-left:2px;font-weight:400}
+
+/* formula box */
+.fbox{background:var(--bg3);border:1px solid var(--bd);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:11px 13px;font-family:monospace;font-size:14px;color:var(--t2);line-height:2.1}
+.fh{color:var(--teal)}
+.fd{font-size:12px;color:var(--t3)}
+
+/* ── chart area ── */
+.charts{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;padding:16px 20px;gap:14px}
+.chdr{flex-shrink:0}
+.ctabs{display:flex;gap:6px;margin-bottom:12px}
+.ctab{background:var(--bg3);border:1px solid var(--bd);border-radius:7px;padding:7px 16px;color:var(--t2);font-size:14px;cursor:pointer;transition:.13s;font-family:monospace}
+.ctab:hover{border-color:var(--bd2);color:var(--t1)}
+.ctab.on{border-color:var(--teal);color:var(--teal);background:rgba(57,197,207,.1)}
+.cpanels{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
+.cpanel{display:none;flex:1;flex-direction:column;min-height:0}
+.cpanel.active{display:flex}
+.cp-title{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:3px}
+.cp-desc{font-size:13px;color:var(--t2);margin-bottom:10px}
+.cw{flex:1;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:14px;position:relative;min-height:0}
+canvas{display:block;cursor:crosshair}
+
+/* tooltip */
+.tt{position:absolute;background:#1c2330;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:8px 12px;pointer-events:none;font-family:monospace;font-size:13px;color:var(--t1);display:none;z-index:20;min-width:180px;line-height:1.9}
+.tt-hd{font-size:12px;color:var(--t2);margin-bottom:3px;border-bottom:1px solid rgba(255,255,255,.07);padding-bottom:3px}
+.trow{display:flex;align-items:center;gap:5px}
+.tdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* legend */
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;flex-shrink:0}
+.li{display:flex;align-items:center;gap:5px;font-family:monospace;font-size:13px;color:var(--t2)}
+.ll{display:inline-block;width:20px;height:2px;border-radius:1px;vertical-align:middle}
+
+/* mobile */
+@media(max-width:860px){
+  html,body{height:auto;overflow:auto}
+  body{display:block}
+  .wrap{display:block;overflow:visible;height:auto}
+  .side{width:100%;border-right:none;border-bottom:1px solid var(--bd)}
+  .charts{padding:12px;height:auto}
+  .cpanel{height:340px}
+  .cpanel.active{display:flex}
+}
+user-select: none
+</style>
+</head>
+<body>
+
+<!-- header -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div>
+      <div class="hdr-title">万向节附加弯矩与载荷分析工具</div>
+      <div class="hdr-sub">《汽车设计》第6版 · 第四章 4.3节 · 式4-4/4-5 · 径向载荷与侧向载荷</div>
+    </div>
+  </div>
+  <div class="badge">完全离线 · 零依赖 · 浏览器运行</div>
+</div>
+
+<!-- main -->
+<div class="wrap">
+
+  <!-- sidebar -->
+  <div class="side">
+
+    <div>
+      <div class="stl">驱动转矩 T₁</div>
+      <div class="pbox">
+        <div class="plbl">主动轴转矩 T₁</div>
+        <div class="pval"><span id="t1val">500</span><span class="punit">N·m</span></div>
+        <input type="range" id="t1sl" min="50" max="2000" step="10" value="500">
+        <div class="ticks"><span>50</span><span>500</span><span>1000</span><span>1500</span><span>2000</span></div>
+      </div>
+      <div class="pg pg4" id="t1pg">
+        <button class="pbtn" data-v="100">100</button>
+        <button class="pbtn" data-v="300">300</button>
+        <button class="pbtn on" data-v="500">500</button>
+        <button class="pbtn" data-v="800">800</button>
+        <button class="pbtn" data-v="1000">1000</button>
+        <button class="pbtn" data-v="1200">1200</button>
+        <button class="pbtn" data-v="1500">1500</button>
+        <button class="pbtn" data-v="2000">2000</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="stl">万向节夹角 α</div>
+      <div class="pbox">
+        <div class="plbl">α（主从动轴夹角）</div>
+        <div class="pval"><span id="aval">15</span><span class="punit">°</span></div>
+        <input type="range" id="asl" min="0" max="35" step="1" value="15">
+        <div class="ticks"><span>0°</span><span>5°</span><span>10°</span><span>15°</span><span>20°</span><span>25°</span><span>30°</span><span>35°</span></div>
+      </div>
+      <div class="pg pg3" id="apg">
+        <button class="pbtn" data-v="0">0°</button>
+        <button class="pbtn" data-v="5">5°</button>
+        <button class="pbtn" data-v="8">8°</button>
+        <button class="pbtn" data-v="10">10°</button>
+        <button class="pbtn on" data-v="15">15°</button>
+        <button class="pbtn" data-v="20">20°</button>
+        <button class="pbtn" data-v="25">25°</button>
+        <button class="pbtn" data-v="30">30°</button>
+        <button class="pbtn" data-v="35">35°</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="stl">支承距离 L₂</div>
+      <div class="pbox">
+        <div class="plbl">万向节中心至从动叉轴支承距离 L₂</div>
+        <div class="pval"><span id="l2val">200</span><span class="punit">mm</span></div>
+        <input type="range" id="l2sl" min="50" max="600" step="10" value="200">
+        <div class="ticks"><span>50</span><span>200</span><span>400</span><span>600</span></div>
+      </div>
+      <div class="pg pg4" id="l2pg">
+        <button class="pbtn" data-v="100">100</button>
+        <button class="pbtn" data-v="150">150</button>
+        <button class="pbtn on" data-v="200">200</button>
+        <button class="pbtn" data-v="250">250</button>
+        <button class="pbtn" data-v="300">300</button>
+        <button class="pbtn" data-v="400">400</button>
+        <button class="pbtn" data-v="500">500</button>
+        <button class="pbtn" data-v="600">600</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="stl">当前计算结果</div>
+      <div class="rg">
+        <div class="rc accent-teal">
+          <div class="rc-n">附加弯矩 T'₂<br>（φ₁=0,π 时从动叉）</div>
+          <div class="rc-v teal" id="rv-t2bend">—<span class="rc-u">N·m</span></div>
+        </div>
+        <div class="rc accent-purple">
+          <div class="rc-n">附加弯矩 T'₁<br>（φ₁=π/2,3π/2 时主动叉）</div>
+          <div class="rc-v purple" id="rv-t1bend">—<span class="rc-u">N·m</span></div>
+        </div>
+        <div class="rc accent-green">
+          <div class="rc-n">径向载荷 F₂ⱼ<br>= T₁sinα / L₂（式4-4）</div>
+          <div class="rc-v green" id="rv-fj">—<span class="rc-u">N</span></div>
+        </div>
+        <div class="rc accent-amber">
+          <div class="rc-n">侧向载荷 F₂c<br>= T₁tanα/(L₂cosα)（式4-5）</div>
+          <div class="rc-v amber" id="rv-fc">—<span class="rc-u">N</span></div>
+        </div>
+        <div class="rc full">
+          <div class="rc-n">侧向/径向 载荷比 F₂c / F₂ⱼ = 1/cos²α</div>
+          <div class="rc-v" style="color:var(--blue)" id="rv-ratio">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="stl">核心公式</div>
+      <div class="fbox">
+        <div>T'₂ = <span class="fh">T₁ · sinα</span> &nbsp;<span class="fd">（φ₁=0,π）</span></div>
+        <div>T'₁ = <span class="fh">T₁ · tanα</span> &nbsp;<span class="fd">（φ₁=π/2,3π/2）</span></div>
+        <div>F₂ⱼ = <span class="fh">T₁sinα / L₂</span> &nbsp;<span class="fd">式4-4</span></div>
+        <div>F₂c = <span class="fh">T₁tanα / (L₂cosα)</span> &nbsp;<span class="fd">式4-5</span></div>
+        <div class="fd" style="margin-top:4px">L₂：万向节中心至从动叉轴支承距离</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- chart area -->
+  <div class="charts">
+
+    <div class="chdr">
+      <div class="ctabs" id="tabs">
+        <div class="ctab on" data-tab="0">径向载荷 vs α</div>
+        <div class="ctab" data-tab="1">侧向载荷 vs α</div>
+        <div class="ctab" data-tab="2">载荷 vs T₁</div>
+        <div class="ctab" data-tab="3">载荷 vs L₂</div>
+      </div>
+    </div>
+
+    <div class="cpanels">
+
+      <!-- tab 0: F2j vs α -->
+      <div class="cpanel active" id="panel0">
+        <div class="cp-title">径向载荷 F₂ⱼ 随夹角 α 的变化</div>
+        <div class="cp-desc">固定 T₁ 和 L₂，横坐标为夹角 α（0°~35°），纵坐标为径向载荷 F₂ⱼ（N）</div>
+        <div class="cw" id="cw0"><canvas id="c0"></canvas><div class="tt" id="tt0"><div class="tt-hd" id="tth0"></div><div id="ttb0"></div></div></div>
+        <div class="leg" id="leg0"></div>
+      </div>
+
+      <!-- tab 1: F2c vs α -->
+      <div class="cpanel" id="panel1">
+        <div class="cp-title">侧向载荷 F₂c 随夹角 α 的变化</div>
+        <div class="cp-desc">固定 T₁ 和 L₂，横坐标为夹角 α（0°~35°），纵坐标为侧向载荷 F₂c（N）</div>
+        <div class="cw" id="cw1"><canvas id="c1"></canvas><div class="tt" id="tt1"><div class="tt-hd" id="tth1"></div><div id="ttb1"></div></div></div>
+        <div class="leg" id="leg1"></div>
+      </div>
+
+      <!-- tab 2: F vs T1 -->
+      <div class="cpanel" id="panel2">
+        <div class="cp-title">径向/侧向载荷随驱动转矩 T₁ 的变化</div>
+        <div class="cp-desc">固定 α 和 L₂，横坐标为 T₁（50~2000 N·m），纵坐标为载荷（N）</div>
+        <div class="cw" id="cw2"><canvas id="c2"></canvas><div class="tt" id="tt2"><div class="tt-hd" id="tth2"></div><div id="ttb2"></div></div></div>
+        <div class="leg" id="leg2"></div>
+      </div>
+
+      <!-- tab 3: F vs L2 -->
+      <div class="cpanel" id="panel3">
+        <div class="cp-title">径向/侧向载荷随支承距离 L₂ 的变化</div>
+        <div class="cp-desc">固定 T₁ 和 α，横坐标为 L₂（50~600 mm），纵坐标为载荷（N）</div>
+        <div class="cw" id="cw3"><canvas id="c3"></canvas><div class="tt" id="tt3"><div class="tt-hd" id="tth3"></div><div id="ttb3"></div></div></div>
+        <div class="leg" id="leg3"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 常量 & 状态
+// ═══════════════════════════════════════════
+const D2R = Math.PI / 180;
+const DPR = window.devicePixelRatio || 1;
+
+let T1 = 500;   // N·m
+let alpha = 15; // deg
+let L2 = 200;   // mm
+let activeTab = 0;
+
+// 颜色
+const C_FJ   = '#39c5cf';  // 径向
+const C_FC   = '#d29922';  // 侧向
+const C_T2B  = '#bc8cff';  // T'2弯矩
+const C_GRID = 'rgba(255,255,255,0.055)';
+const C_AXIS = '#6e7681';
+const C_TICK = '#8b949e';
+
+// ═══════════════════════════════════════════
+// 公式计算
+// ═══════════════════════════════════════════
+function calc(t1, aDeg, l2mm) {
+  const a = aDeg * D2R;
+  const l2 = l2mm / 1000; // m
+  const sinA = Math.sin(a);
+  const cosA = Math.cos(a);
+  const tanA = aDeg === 90 ? Infinity : Math.tan(a);
+  const T2bend = t1 * sinA;                       // T'2 N·m
+  const T1bend = aDeg === 0 ? 0 : t1 * tanA;     // T'1 N·m
+  const Fj = l2 === 0 ? 0 : T2bend / l2;          // F2j N  (式4-4)
+  const Fc = l2 === 0 || cosA === 0 ? 0 : (t1 * tanA) / (l2 * cosA); // F2c N (式4-5)
+  const ratio = cosA === 0 ? Infinity : 1 / (cosA * cosA);
+  return { T2bend, T1bend, Fj, Fc, ratio };
+}
+
+// ═══════════════════════════════════════════
+// 更新结果卡片
+// ═══════════════════════════════════════════
+function updateCards() {
+  const r = calc(T1, alpha, L2);
+  document.getElementById('rv-t2bend').innerHTML = r.T2bend.toFixed(2) + '<span class="rc-u">N·m</span>';
+  document.getElementById('rv-t1bend').innerHTML = r.T1bend.toFixed(2) + '<span class="rc-u">N·m</span>';
+  document.getElementById('rv-fj').innerHTML     = r.Fj.toFixed(1) + '<span class="rc-u">N</span>';
+  document.getElementById('rv-fc').innerHTML     = r.Fc.toFixed(1) + '<span class="rc-u">N</span>';
+  document.getElementById('rv-ratio').textContent = r.ratio.toFixed(4);
+}
+
+// ═══════════════════════════════════════════
+// 通用 Canvas 绘图函数
+// ═══════════════════════════════════════════
+function drawCanvas(canvasId, wrapperId, xArr, seriesArr, xlabel, ylabel, ttId, tthId, ttbId, legId, xFmt, yFmt, cursorX) {
+  const wrap = document.getElementById(wrapperId);
+  const cv   = document.getElementById(canvasId);
+  const W = wrap.clientWidth - 28;
+  const H = wrap.clientHeight - 28;
+  if (W <= 0 || H <= 0) return;
+
+  cv.width  = W * DPR;
+  cv.height = H * DPR;
+  cv.style.width  = W + 'px';
+  cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+
+  const ml = 72, mr = 24, mt = 18, mb = 46;
+  const pw = W - ml - mr, ph = H - mt - mb;
+
+  const xmin = xArr[0], xmax = xArr[xArr.length - 1];
+
+  // Y range across all series
+  let ylo = Infinity, yhi = -Infinity;
+  seriesArr.forEach(s => s.ys.forEach(v => { if(v < ylo) ylo = v; if(v > yhi) yhi = v; }));
+  if (ylo === yhi) { ylo -= 1; yhi += 1; }
+  const span = yhi - ylo;
+  ylo -= span * 0.08; yhi += span * 0.08;
+  // nice step
+  const rawStep = (yhi - ylo) / 6;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  let ns = norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10;
+  const yStep = ns * mag;
+  ylo = Math.floor(ylo / yStep) * yStep;
+  yhi = Math.ceil(yhi / yStep) * yStep;
+
+  function px(x) { return ml + (x - xmin) / (xmax - xmin) * pw; }
+  function py(y) { return mt + (1 - (y - ylo) / (yhi - ylo)) * ph; }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(ml, mt, pw, ph);
+
+  // grid
+  for (let y = ylo; y <= yhi + 1e-9; y += yStep) {
+    const cy = py(y);
+    ctx.strokeStyle = C_GRID; ctx.lineWidth = 0.7; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(ml, cy); ctx.lineTo(ml + pw, cy); ctx.stroke();
+    // tick label
+    ctx.fillStyle = C_TICK; ctx.font = '13px monospace'; ctx.textAlign = 'right';
+    const lbl = Math.abs(y) < 1e-9 ? '0' : y >= 1000 ? (y/1000).toFixed(1)+'k' : y.toFixed(yStep < 1 ? 2 : yStep < 10 ? 1 : 0);
+    ctx.fillText(lbl, ml - 7, py(y) + 4);
+  }
+
+  // x grid & ticks
+  const nXticks = Math.min(8, xArr.length);
+  const xTickIdx = [];
+  for (let i = 0; i < nXticks; i++) xTickIdx.push(Math.round(i * (xArr.length - 1) / (nXticks - 1)));
+  xTickIdx.forEach(i => {
+    const x = xArr[i], cx = px(x);
+    ctx.strokeStyle = C_GRID; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.moveTo(cx, mt); ctx.lineTo(cx, mt + ph); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, mt + ph); ctx.lineTo(cx, mt + ph + 5); ctx.stroke();
+    ctx.fillStyle = C_TICK; ctx.font = '13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(xFmt(x), cx, mt + ph + 18);
+  });
+
+  // series curves
+  seriesArr.forEach(s => {
+    ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 2.2;
+    ctx.setLineDash(s.dash || []);
+    ctx.globalAlpha = s.alpha || 1;
+    ctx.beginPath();
+    xArr.forEach((x, j) => {
+      const cx = px(x), cy = py(s.ys[j]);
+      j === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  });
+
+  // cursor line
+  if (cursorX !== null && cursorX >= ml && cursorX <= ml + pw) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(cursorX, mt); ctx.lineTo(cursorX, mt + ph); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ml, mt); ctx.lineTo(ml, mt + ph);
+  ctx.moveTo(ml, mt + ph); ctx.lineTo(ml + pw, mt + ph);
+  ctx.stroke();
+
+  // axis titles
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '14px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(xlabel, ml + pw / 2, H - 5);
+  ctx.save(); ctx.translate(13, mt + ph / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText(ylabel, 0, 0); ctx.restore();
+
+  // store for tooltip
+  cv._map = { ml, mr, mt, mb, pw, ph, px, py, xmin, xmax, ylo, yhi, W, H, xArr, seriesArr, xFmt, yFmt, ttId, tthId, ttbId, wrapperId };
+}
+
+// ═══════════════════════════════════════════
+// 每个 tab 的绘图数据生成
+// ═══════════════════════════════════════════
+let cursors = [null, null, null, null];
+
+function buildTab0() {
+  const xs = [];
+  for (let a = 0; a <= 35; a += 0.25) xs.push(a);
+  const fjYs = xs.map(a => calc(T1, a, L2).Fj);
+  const fcYs = xs.map(a => calc(T1, a, L2).Fc);
+  const seriesArr = [
+    { ys: fjYs, color: C_FJ,  label: `F₂ⱼ 径向载荷`, width: 2.5 },
+    { ys: fcYs, color: C_FC, label: `F₂c 侧向载荷`, width: 2.5, dash: [6,3] },
+  ];
+  drawCanvas('c0','cw0', xs, seriesArr, '夹角 α / °', '载荷 / N',
+    'tt0','tth0','ttb0','leg0', v=>v.toFixed(1)+'°', v=>v.toFixed(1)+' N', cursors[0]);
+  buildLegend('leg0', seriesArr);
+}
+
+function buildTab1() {
+  // F2c vs alpha, multiple T1 curves
+  const xs = [];
+  for (let a = 0; a <= 35; a += 0.25) xs.push(a);
+  const T1vals = [200, 500, 800, 1200, 1500];
+  const colors = [C_FJ, '#3fb950', C_FC, '#bc8cff', '#f85149'];
+  const seriesArr = T1vals.map((t, i) => ({
+    ys: xs.map(a => calc(t, a, L2).Fc),
+    color: colors[i],
+    label: `T₁=${t} N·m`,
+    width: t === T1 ? 3 : 1.6,
+    dash: t === T1 ? [] : [5, 3],
+    alpha: t === T1 ? 1 : 0.65,
+  }));
+  drawCanvas('c1','cw1', xs, seriesArr, '夹角 α / °', 'F₂c 侧向载荷 / N',
+    'tt1','tth1','ttb1','leg1', v=>v.toFixed(1)+'°', v=>v.toFixed(1)+' N', cursors[1]);
+  buildLegend('leg1', seriesArr);
+}
+
+function buildTab2() {
+  const xs = [];
+  for (let t = 50; t <= 2000; t += 10) xs.push(t);
+  const fjYs = xs.map(t => calc(t, alpha, L2).Fj);
+  const fcYs = xs.map(t => calc(t, alpha, L2).Fc);
+  const seriesArr = [
+    { ys: fjYs, color: C_FJ, label: `F₂ⱼ 径向（α=${alpha}°, L₂=${L2}mm）`, width: 2.5 },
+    { ys: fcYs, color: C_FC, label: `F₂c 侧向（α=${alpha}°, L₂=${L2}mm）`, width: 2.5, dash: [6,3] },
+  ];
+  drawCanvas('c2','cw2', xs, seriesArr, '驱动转矩 T₁ / N·m', '载荷 / N',
+    'tt2','tth2','ttb2','leg2', v=>v.toFixed(0)+' N·m', v=>v.toFixed(1)+' N', cursors[2]);
+  buildLegend('leg2', seriesArr);
+}
+
+function buildTab3() {
+  const xs = [];
+  for (let l = 50; l <= 600; l += 5) xs.push(l);
+  const fjYs = xs.map(l => calc(T1, alpha, l).Fj);
+  const fcYs = xs.map(l => calc(T1, alpha, l).Fc);
+  const seriesArr = [
+    { ys: fjYs, color: C_FJ, label: `F₂ⱼ 径向（T₁=${T1}N·m, α=${alpha}°）`, width: 2.5 },
+    { ys: fcYs, color: C_FC, label: `F₂c 侧向（T₁=${T1}N·m, α=${alpha}°）`, width: 2.5, dash: [6,3] },
+  ];
+  drawCanvas('c3','cw3', xs, seriesArr, '支承距离 L₂ / mm', '载荷 / N',
+    'tt3','tth3','ttb3','leg3', v=>v.toFixed(0)+' mm', v=>v.toFixed(1)+' N', cursors[3]);
+  buildLegend('leg3', seriesArr);
+}
+
+function buildLegend(legId, seriesArr) {
+  const el = document.getElementById(legId);
+  el.innerHTML = seriesArr.map(s => {
+    const bg = s.dash && s.dash.length
+      ? `background:repeating-linear-gradient(90deg,${s.color} 0,${s.color} 5px,transparent 5px,transparent 9px)`
+      : `background:${s.color}`;
+    return `<div class="li"><span class="ll" style="${bg};height:${s.width||2}px"></span>${s.label}</div>`;
+  }).join('');
+}
+
+function drawAll() {
+  if (activeTab === 0) buildTab0();
+  else if (activeTab === 1) buildTab1();
+  else if (activeTab === 2) buildTab2();
+  else buildTab3();
+  updateCards();
+}
+
+// ═══════════════════════════════════════════
+// Tooltip 交互
+// ═══════════════════════════════════════════
+function setupTooltip(canvasId) {
+  const cv = document.getElementById(canvasId);
+  const tabIdx = parseInt(canvasId.replace('c',''));
+
+  cv.addEventListener('mousemove', e => {
+    const m = cv._map; if (!m) return;
+    const rect = cv.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const inPlot = mx >= m.ml && mx <= m.ml + m.pw && my >= m.mt && my <= m.mt + m.ph;
+    const tt = document.getElementById(m.ttId);
+    if (!inPlot) { tt.style.display = 'none'; return; }
+
+    const x01 = (mx - m.ml) / m.pw;
+    const xVal = x01 * (m.xmax - m.xmin) + m.xmin;
+    const idx = Math.max(0, Math.min(m.xArr.length - 1, Math.round(x01 * (m.xArr.length - 1))));
+
+    document.getElementById(m.tthId).textContent = m.xFmt(xVal);
+    let html = '';
+    m.seriesArr.forEach(s => {
+      html += `<div class="trow"><div class="tdot" style="background:${s.color}"></div>${s.label.split('（')[0]}：<b>${m.yFmt(s.ys[idx])}</b></div>`;
+    });
+    document.getElementById(m.ttbId).innerHTML = html;
+
+    const wrapRect = document.getElementById(m.wrapperId).getBoundingClientRect();
+    const tx = e.clientX - wrapRect.left + 14;
+    const ty = e.clientY - wrapRect.top - 40;
+    const ttW = 240;
+    tt.style.left = (tx + ttW > wrapRect.width - 10 ? tx - ttW - 20 : tx) + 'px';
+    tt.style.top  = Math.max(4, ty) + 'px';
+    tt.style.display = 'block';
+
+    cursors[tabIdx] = mx;
+    drawAll();
+  });
+
+  cv.addEventListener('mouseleave', () => {
+    document.getElementById('tt' + tabIdx).style.display = 'none';
+    cursors[tabIdx] = null;
+    drawAll();
+  });
+}
+
+for (let i = 0; i < 4; i++) setupTooltip('c' + i);
+
+// ═══════════════════════════════════════════
+// Tab 切换
+// ═══════════════════════════════════════════
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.ctab');
+  if (!tab) return;
+  activeTab = +tab.dataset.tab;
+  document.querySelectorAll('.ctab').forEach(t => t.classList.toggle('on', +t.dataset.tab === activeTab));
+  document.querySelectorAll('.cpanel').forEach((p, i) => p.classList.toggle('active', i === activeTab));
+  drawAll();
+});
+
+// ═══════════════════════════════════════════
+// 滑块 & 预设按钮事件
+// ═══════════════════════════════════════════
+function bindSlider(slId, pgId, valId, setFn) {
+  const sl = document.getElementById(slId);
+  sl.addEventListener('input', e => {
+    setFn(+e.target.value);
+    document.getElementById(valId).textContent = +e.target.value;
+    document.querySelectorAll('#' + pgId + ' .pbtn').forEach(b => b.classList.toggle('on', +b.dataset.v === +e.target.value));
+    drawAll();
+  });
+  document.getElementById(pgId).addEventListener('click', e => {
+    const b = e.target.closest('.pbtn'); if (!b) return;
+    const v = +b.dataset.v;
+    setFn(v);
+    document.getElementById(valId).textContent = v;
+    document.getElementById(slId).value = v;
+    document.querySelectorAll('#' + pgId + ' .pbtn').forEach(btn => btn.classList.toggle('on', btn === b));
+    drawAll();
+  });
+}
+
+bindSlider('t1sl', 't1pg', 't1val', v => T1 = v);
+bindSlider('asl',  'apg',  'aval',  v => alpha = v);
+bindSlider('l2sl', 'l2pg', 'l2val', v => L2 = v);
+
+// ═══════════════════════════════════════════
+// resize & init
+// ═══════════════════════════════════════════
+window.addEventListener('resize', drawAll);
+requestAnimationFrame(() => requestAnimationFrame(() => drawAll()));
+</script>
+<script>
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, false);
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+if (e.key === 'F12' || 
+(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+(e.ctrlKey && e.key === 'U') ||
+(e.ctrlKey && e.key === 'S')) {
+e.preventDefault();
+return false;
+}
+});
+
+</script>
+<script>
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>
+
+</body>
+</html>
